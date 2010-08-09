@@ -50,8 +50,8 @@ object ScalaProtoWrapperGenerator {
         val options = fileDescriptor.getOptions
         val javaClass = options.getJavaOuterClassname
         out.println("import "+options.getJavaPackage+"."+javaClass)
-        out.println("import protobuf.Message")
-        out.println("import protobuf.MessageBuilder")
+        out.println("import protobuf.TypedMessage")
+        out.println("import protobuf.TypedMessageBuilder")
         out.println("import collection.mutable.ListBuffer")
         out.println("import java.io.{InputStream, OutputStream}")
         out.println("import collection.JavaConversions")
@@ -84,13 +84,14 @@ object ScalaProtoWrapperGenerator {
         val repeatedFieldListBuffers = repeatedFields.zip(repeatedFieldTypes.unzip._1).map(x => "val "+x._1.getName+":ListBuffer["+x._2+"] = new ListBuffer["+x._2+"]")
 
         val name = descriptor.getName
+        val javaSubClass = javaClass+"."+name
 
         out.print("class "+name+"(")
         val spaces = " "*(name.length+7)
         out.println((constructorFields++optionalFieldVals++repeatedFieldLists).mkString(",\n"+spaces))
-        out.println("        ) extends Message {")
-        out.println("    def javaMessage:"+javaClass+"."+name+" = {")
-        out.println("        val builder = "+javaClass+"."+name+".newBuilder")
+        out.println("        ) extends TypedMessage["+javaSubClass+"] {")
+        out.println("    def javaMessage:"+javaSubClass+" = {")
+        out.println("        val builder = "+javaSubClass+".newBuilder")
         for ((field, isMessage) <- requiredFields.zip(requiredFieldTypes.unzip._2)) {
             val fieldName = field.getName
             out.println("        builder.set"+upcaseFirstLetter(fieldName)+"("+fieldName+(if(isMessage)".javaMessage" else "")+")")
@@ -123,11 +124,11 @@ object ScalaProtoWrapperGenerator {
         out.println("object "+name+" {")
         out.println
         out.println("    def parse(inputStream:InputStream):"+name+" = {")
-        out.println("        val message = "+javaClass+"."+name+".parseDelimitedFrom(inputStream)")
+        out.println("        val message = "+javaSubClass+".parseDelimitedFrom(inputStream)")
         out.println("        javaToScala(message)")
         out.println("    }")
         out.println
-        out.println("    def javaToScala(message:"+javaClass+"."+name+"):"+name+" = {")
+        out.println("    def javaToScala(message:"+javaSubClass+"):"+name+" = {")
         val requiredGetters = new ListBuffer[String]
         for ((field, (typeName, isMessage)) <- requiredFields.zip(requiredFieldTypes)) {
             val fieldName = field.getName
@@ -152,7 +153,7 @@ object ScalaProtoWrapperGenerator {
 
         out.print("class "+name+"Builder(")
         out.print(constructorFields.mkString(","))
-        out.println(") extends MessageBuilder {")
+        out.println(") extends TypedMessageBuilder["+name+", "+javaSubClass+"] {")
         for (field <- optionalFieldVars) {
             out.println("    "+field)
         }

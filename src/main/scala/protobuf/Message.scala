@@ -29,6 +29,15 @@ trait Message {
     def javaMessage:com.google.protobuf.Message
 }
 
+trait TypedMessage[A <: com.google.protobuf.Message] extends Message {
+    override def javaMessage:A
+}
+
 trait MessageBuilder {
     def set(i:Int, fieldValue:Option[Any]):Unit
+    def build:Message
+}
+
+trait TypedMessageBuilder[A <: TypedMessage[B], B <: com.google.protobuf.Message] extends MessageBuilder {
+    override def build:A
 }
