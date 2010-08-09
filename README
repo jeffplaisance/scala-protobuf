@@ -1,0 +1,3 @@
+to run you must create a symlink to bin/protoc-gen-scala.sh called protoc-gen-scala somewhere in your path
+
+run protoc with both --java_out and --scala_out
