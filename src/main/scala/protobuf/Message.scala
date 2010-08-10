@@ -12,7 +12,7 @@
 package protobuf
 
 import com.google.protobuf.ByteString
-import java.io.OutputStream
+import java.io.{InputStream, OutputStream}
 
 /**
  * @author jplaisance
@@ -40,4 +40,15 @@ trait MessageBuilder {
 
 trait TypedMessageBuilder[A <: TypedMessage[B], B <: com.google.protobuf.Message] extends MessageBuilder {
     override def build:A
+}
+
+trait MessageParser {
+    def parse(inputStream:InputStream):Message
+    def javaToScala(message:com.google.protobuf.Message):Message
+}
+
+trait TypedMessageParser[A <: TypedMessage[B], B <: com.google.protobuf.Message] extends MessageParser {
+    override def parse(inputStream:InputStream):A
+    def javaToScala(message:B):A
+    override def javaToScala(message:com.google.protobuf.Message):Message = javaToScala(message.asInstanceOf[B])
 }

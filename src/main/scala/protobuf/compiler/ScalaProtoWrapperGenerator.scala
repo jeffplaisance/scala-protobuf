@@ -51,6 +51,7 @@ object ScalaProtoWrapperGenerator {
         val javaClass = options.getJavaOuterClassname
         out.println("import "+options.getJavaPackage+"."+javaClass)
         out.println("import protobuf.TypedMessage")
+        out.println("import protobuf.TypedMessageParser")
         out.println("import protobuf.TypedMessageBuilder")
         out.println("import collection.mutable.ListBuffer")
         out.println("import java.io.{InputStream, OutputStream}")
@@ -121,7 +122,7 @@ object ScalaProtoWrapperGenerator {
         out.println("}")
         out.println
 
-        out.println("object "+name+" {")
+        out.println("object "+name+" extends TypedMessageParser["+name+", "+javaSubClass+"] {")
         out.println
         out.println("    def parse(inputStream:InputStream):"+name+" = {")
         out.println("        val message = "+javaSubClass+".parseDelimitedFrom(inputStream)")
