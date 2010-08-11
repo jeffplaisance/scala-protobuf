@@ -109,7 +109,11 @@ object ScalaProtoWrapperGenerator {
         out.println("        builder.build")
         out.println("    }")
         out.println
-        out.println("    def write(outputStream:OutputStream):Unit = {")
+        out.println("    def writeTo(outputStream:OutputStream):Unit = {")
+        out.println("        javaMessage.writeTo(outputStream)")
+        out.println("    }")
+        out.println
+        out.println("    def writeDelimitedTo(outputStream:OutputStream):Unit = {")
         out.println("        javaMessage.writeDelimitedTo(outputStream)")
         out.println("    }")
         out.println
@@ -125,7 +129,12 @@ object ScalaProtoWrapperGenerator {
 
         out.println("object "+name+" extends TypedMessageParser["+name+", "+javaSubClass+"] {")
         out.println
-        out.println("    def parse(inputStream:InputStream):"+name+" = {")
+        out.println("    def parseFrom(inputStream:InputStream):"+name+" = {")
+        out.println("        val message = "+javaSubClass+".parseFrom(inputStream)")
+        out.println("        javaToScala(message)")
+        out.println("    }")
+        out.println
+        out.println("    def parseDelimitedFrom(inputStream:InputStream):"+name+" = {")
         out.println("        val message = "+javaSubClass+".parseDelimitedFrom(inputStream)")
         out.println("        javaToScala(message)")
         out.println("    }")

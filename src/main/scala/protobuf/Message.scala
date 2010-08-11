@@ -25,7 +25,8 @@ object ByteArrayByteStringImplicits {
 
 trait Message {
     def get(i:Int):Any
-    def write(outputStream:OutputStream):Unit
+    def writeTo(outputStream:OutputStream):Unit
+    def writeDelimitedTo(outputStream:OutputStream):Unit
     def javaMessage:com.google.protobuf.Message
 }
 
@@ -43,12 +44,14 @@ trait TypedMessageBuilder[A <: TypedMessage[B], B <: com.google.protobuf.Message
 }
 
 trait MessageParser {
-    def parse(inputStream:InputStream):Message
+    def parseFrom(inputStream:InputStream):Message
+    def parseDelimitedFrom(inputStream:InputStream):Message
     def javaToScala(message:com.google.protobuf.Message):Message
 }
 
 trait TypedMessageParser[A <: TypedMessage[B], B <: com.google.protobuf.Message] extends MessageParser {
-    override def parse(inputStream:InputStream):A
+    override def parseFrom(inputStream:InputStream):A
+    override def parseDelimitedFrom(inputStream:InputStream):A
     def javaToScala(message:B):A
     override def javaToScala(message:com.google.protobuf.Message):Message = javaToScala(message.asInstanceOf[B])
 }
