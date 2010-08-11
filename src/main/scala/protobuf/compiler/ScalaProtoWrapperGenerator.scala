@@ -67,7 +67,6 @@ object ScalaProtoWrapperGenerator {
     def makeClassesForDescriptor(descriptor:Descriptor, javaClass:String):String = {
         val stringWriter = new StringWriter()
         val out = new PrintWriter(stringWriter)
-        descriptor.getNestedTypes.iterator.foreach(x => out.print(indentString(makeClassesForDescriptor(x, javaClass))))
         val fields = descriptor.getFields.iterator.toList
 
         val requiredFields = fields.filter(field => field.isRequired)
@@ -85,8 +84,9 @@ object ScalaProtoWrapperGenerator {
         val repeatedFieldListBuffers = repeatedFields.zip(repeatedFieldTypes.unzip._1).map(x => "val "+x._1.getName+":ListBuffer["+x._2+"] = new ListBuffer["+x._2+"]")
 
         val name = descriptor.getName
-        val javaSubClass = javaClass+"."+name
+        val javaSubClass = javaClass+"."+getContainingType(descriptor.getContainingType)+name
 
+        out.println
         out.print("class "+name+"(")
         val spaces = " "*(name.length+7)
         out.println((constructorFields++optionalFieldVals++repeatedFieldLists).mkString(",\n"+spaces))
@@ -149,6 +149,7 @@ object ScalaProtoWrapperGenerator {
         val spaces2 = " "*(name.length+13)
         out.println("        new "+name+"("+(requiredGetters++optionalGetters++repeatedGetters).mkString(",\n"+spaces2)+"\n        )")
         out.println("    }")
+        descriptor.getNestedTypes.iterator.foreach(x => out.print(indentString(makeClassesForDescriptor(x, javaClass))))
         out.println("}")
         out.println
 
@@ -175,7 +176,6 @@ object ScalaProtoWrapperGenerator {
         out.println("        new "+name+"("+(requiredFields.map(x => x.getName())++optionalFields.map(x => x.getName())++repeatedFields.map(x => x.getName()+".result")).mkString(",\n"+spaces2)+"\n        )")
         out.println("    }")
         out.println("}")
-        out.println
         stringWriter.toString
     }
 
@@ -195,10 +195,11 @@ object ScalaProtoWrapperGenerator {
         fields.map(field => getTypeString(field, javaClass))
     }
 
+    def getContainingType(descriptor:Descriptor):String = {
+        if (descriptor != null) getContainingType(descriptor.getContainingType)+descriptor.getName+"." else ""
+    }
+
     def getTypeString(field:FieldDescriptor, javaClass:String):(String,Boolean) = {
-        def getContainingType(descriptor:Descriptor):String = {
-            if (descriptor != null) getContainingType(descriptor.getContainingType)+descriptor.getName+"." else ""
-        }
         field.getJavaType match {
             case JavaType.BOOLEAN => ("Boolean", false)
             case JavaType.BYTE_STRING => ("ByteString", false)
