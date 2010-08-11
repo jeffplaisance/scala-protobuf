@@ -175,9 +175,10 @@ object ScalaProtoWrapperGenerator {
         }
         out.println
         out.println("    def set(i:Int, fieldValue:Option[Any]):Unit = {")
-        if (!requiredFields.isEmpty || !optionalFields.isEmpty || !repeatedFields.isEmpty) {
+        if (!requiredFields.isEmpty || !optionalFields.isEmpty) {
             out.println("        i match {")
-            (requiredFields++optionalFields).foreach(field => out.println("            case "+field.getNumber+" => "+field.getName+" = fieldValue.asInstanceOf[Option["+getTypeString(field, javaClass)._1+"]]"))
+            requiredFields.foreach(field => out.println("            case "+field.getNumber+" => "+field.getName+" = fieldValue.asInstanceOf["+getTypeString(field, javaClass)._1+"]"))
+            optionalFields.foreach(field => out.println("            case "+field.getNumber+" => "+field.getName+" = fieldValue.asInstanceOf[Option["+getTypeString(field, javaClass)._1+"]]"))
             out.println("        }")
         }
         out.println("    }")
