@@ -71,7 +71,8 @@ object ScalaProtoWrapperGenerator {
 
         val requiredFields = fields.filter(field => field.isRequired)
         val requiredFieldTypes = getFieldTypes(requiredFields, javaClass)
-        val constructorFields = requiredFields.zip(requiredFieldTypes.unzip._1).map(x => "val "+x._1.getName+":"+x._2)
+        val requiredFieldVals = requiredFields.zip(requiredFieldTypes.unzip._1).map(x => "val "+x._1.getName+":"+x._2)
+        val requiredFieldVars = requiredFields.zip(requiredFieldTypes.unzip._1).map(x => "var "+x._1.getName+":"+x._2)
 
         val optionalFields = fields.filter(field => field.isOptional)
         val optionalFieldTypes = getFieldTypes(optionalFields, javaClass)
@@ -89,7 +90,7 @@ object ScalaProtoWrapperGenerator {
         out.println
         out.print("class "+name+"(")
         val spaces = " "*(name.length+7)
-        out.println((constructorFields++optionalFieldVals++repeatedFieldLists).mkString(",\n"+spaces))
+        out.println((requiredFieldVals++optionalFieldVals++repeatedFieldLists).mkString(",\n"+spaces))
         out.println("        ) extends TypedMessage["+javaSubClass+"] {")
         out.println("    def javaMessage:"+javaSubClass+" = {")
         out.println("        val builder = "+javaSubClass+".newBuilder")
@@ -154,7 +155,7 @@ object ScalaProtoWrapperGenerator {
         out.println
 
         out.print("class "+name+"Builder(")
-        out.print(constructorFields.mkString(","))
+        out.print(requiredFieldVars.mkString(","))
         out.println(") extends TypedMessageBuilder["+name+", "+javaSubClass+"] {")
         for (field <- optionalFieldVars) {
             out.println("    "+field)
