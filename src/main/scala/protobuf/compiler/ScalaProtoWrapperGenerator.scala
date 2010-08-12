@@ -71,27 +71,28 @@ object ScalaProtoWrapperGenerator {
 
         val requiredFields = fields.filter(field => field.isRequired)
         val requiredFieldTypes = getFieldTypes(requiredFields, javaClass)
-        val requiredFieldVals = requiredFields.zip(requiredFieldTypes.unzip._1).map(x => "val "+x._1.getName+":"+x._2)
-        val requiredFieldVars = requiredFields.zip(requiredFieldTypes.unzip._1).map(x => "var "+x._1.getName+":"+x._2)
+        val requiredFieldDecls = requiredFields.zip(requiredFieldTypes.unzip._1).map(x => x._1.getName+":"+x._2)
+        val requiredFieldVars = requiredFieldDecls.map(x => "var "+x)
 
         val optionalFields = fields.filter(field => field.isOptional)
         val optionalFieldTypes = getFieldTypes(optionalFields, javaClass)
-        val optionalFieldVals = optionalFields.zip(optionalFieldTypes.unzip._1).map(x => "val "+x._1.getName+":Option["+x._2+"]")
-        val optionalFieldVars = optionalFields.zip(optionalFieldTypes.unzip._1).map(x => "var "+x._1.getName+":Option["+x._2+"] = None")
+        val optionalFieldDecls = optionalFields.zip(optionalFieldTypes.unzip._1).map(x => x._1.getName+":Option["+x._2+"]")
+        val optionalFieldDefaults = optionalFieldDecls.map(x => x+" = None")
+        val optionalFieldVars = optionalFieldDefaults.map(x => "var "+x)
 
         val repeatedFields = fields.filter(field => field.isRepeated)
         val repeatedFieldTypes = getFieldTypes(repeatedFields, javaClass)
-        val repeatedFieldLists = repeatedFields.zip(repeatedFieldTypes.unzip._1).map(x => "val "+x._1.getName+":List["+x._2+"]")
+        val repeatedFieldDefaults = repeatedFields.zip(repeatedFieldTypes.unzip._1).map(x => x._1.getName+":List["+x._2+"] = Nil")
         val repeatedFieldListBuffers = repeatedFields.zip(repeatedFieldTypes.unzip._1).map(x => "val "+x._1.getName+":ListBuffer["+x._2+"] = new ListBuffer["+x._2+"]")
 
         val name = descriptor.getName
         val javaSubClass = javaClass+"."+getContainingType(descriptor.getContainingType)+name
 
         out.println
-        out.print("class "+name+"(")
-        val spaces = " "*(name.length+7)
-        out.println((requiredFieldVals++optionalFieldVals++repeatedFieldLists).mkString(",\n"+spaces))
-        out.println("        ) extends TypedMessage["+javaSubClass+"] {")
+        out.print("case class "+name+"(")
+        val spaces = " "*(name.length+12)
+        out.println((requiredFieldDecls++optionalFieldDefaults++repeatedFieldDefaults).mkString(",\n"+spaces))
+        out.println("        ) extends TypedMessage["+name+","+javaSubClass+"] {")
         out.println("    def javaMessage:"+javaSubClass+" = {")
         out.println("        val builder = "+javaSubClass+".newBuilder")
         for ((field, isMessage) <- requiredFields.zip(requiredFieldTypes.unzip._2)) {
@@ -123,6 +124,15 @@ object ScalaProtoWrapperGenerator {
             fields.foreach(field => out.println("            case "+field.getNumber+" => "+field.getName))
             out.println("        }")
         }
+        out.println("    }")
+        out.println
+        out.println("    def copyAndSet(i:Int, fieldValue:Any):"+name+" = {")
+        if (!requiredFields.isEmpty || !optionalFields.isEmpty) {
+            out.println("        i match {")
+            requiredFields.foreach(field => out.println("            case "+field.getNumber+" => copy("+field.getName+" = fieldValue.asInstanceOf["+getTypeString(field, javaClass)._1+"])"))
+            optionalFields.foreach(field => out.println("            case "+field.getNumber+" => copy("+field.getName+" = fieldValue.asInstanceOf[Option["+getTypeString(field, javaClass)._1+"]])"))
+            out.println("        }")
+        } else out.println("        this")
         out.println("    }")
         out.println("}")
         out.println
@@ -174,7 +184,7 @@ object ScalaProtoWrapperGenerator {
             out.println("    "+field)
         }
         out.println
-        out.println("    def set(i:Int, fieldValue:Option[Any]):Unit = {")
+        out.println("    def set(i:Int, fieldValue:Any):Unit = {")
         if (!requiredFields.isEmpty || !optionalFields.isEmpty) {
             out.println("        i match {")
             requiredFields.foreach(field => out.println("            case "+field.getNumber+" => "+field.getName+" = fieldValue.asInstanceOf["+getTypeString(field, javaClass)._1+"]"))

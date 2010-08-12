@@ -24,34 +24,41 @@ object ByteArrayByteStringImplicits {
 }
 
 trait Message {
+    type A <: TypedMessage[A,B]
+    type B <: com.google.protobuf.Message
     def get(i:Int):Any
     def writeTo(outputStream:OutputStream):Unit
     def writeDelimitedTo(outputStream:OutputStream):Unit
-    def javaMessage:com.google.protobuf.Message
+    def javaMessage:B
+    def copyAndSet(i:Int, fieldValue:Any):A
 }
 
-trait TypedMessage[A <: com.google.protobuf.Message] extends Message {
-    override def javaMessage:A
+trait TypedMessage[C <: TypedMessage[C, D], D <: com.google.protobuf.Message] extends Message {
+    type A = C
+    type B = D
 }
 
 trait MessageBuilder {
-    def set(i:Int, fieldValue:Option[Any]):Unit
-    def build:Message
+    type A <: TypedMessage[A, B]
+    type B <: com.google.protobuf.Message
+    def set(i:Int, fieldValue:Any):Unit
+    def build:A
 }
 
-trait TypedMessageBuilder[A <: TypedMessage[B], B <: com.google.protobuf.Message] extends MessageBuilder {
-    override def build:A
+trait TypedMessageBuilder[C <: TypedMessage[C, D], D <: com.google.protobuf.Message] extends MessageBuilder {
+    type A = C
+    type B = D
 }
 
 trait MessageParser {
-    def parseFrom(inputStream:InputStream):Message
-    def parseDelimitedFrom(inputStream:InputStream):Message
-    def javaToScala(message:com.google.protobuf.Message):Message
+    type A <: TypedMessage[A, B]
+    type B <: com.google.protobuf.Message
+    def parseFrom(inputStream:InputStream):A
+    def parseDelimitedFrom(inputStream:InputStream):A
+    def javaToScala(b:B):A
 }
 
-trait TypedMessageParser[A <: TypedMessage[B], B <: com.google.protobuf.Message] extends MessageParser {
-    override def parseFrom(inputStream:InputStream):A
-    override def parseDelimitedFrom(inputStream:InputStream):A
-    def javaToScala(message:B):A
-    override def javaToScala(message:com.google.protobuf.Message):Message = javaToScala(message.asInstanceOf[B])
+trait TypedMessageParser[C <: TypedMessage[C, D], D <: com.google.protobuf.Message] extends MessageParser {
+    type A = C
+    type B = D
 }
