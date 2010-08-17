@@ -9,7 +9,7 @@
 // distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and limitations under the License.
 
-package protobuf.compiler
+package com.jeffplaisance.protobuf.compiler
 import google.protobuf.compiler.Plugin._
 import collection.JavaConversions
 import google.protobuf.compiler.Plugin.CodeGeneratorResponse.File
@@ -50,9 +50,7 @@ object ScalaProtoWrapperGenerator {
         val options = fileDescriptor.getOptions
         val javaClass = options.getJavaOuterClassname
         out.println("import "+options.getJavaPackage+"."+javaClass)
-        out.println("import protobuf.TypedMessage")
-        out.println("import protobuf.TypedMessageParser")
-        out.println("import protobuf.TypedMessageBuilder")
+        out.println("import com.jeffplaisance.protobuf.{TypedMessage,TypedMessageParser,TypedMessageBuilder}")
         out.println("import collection.mutable.ListBuffer")
         out.println("import java.io.{InputStream, OutputStream}")
         out.println("import collection.JavaConversions")

@@ -8,4 +8,4 @@ do
   CLASSPATH=${CLASSPATH}:${i}
 done
 
-java -Xmx512M -cp ${CLASSPATH} protobuf.compiler.ScalaProtoWrapperGenerator
+java -Xmx512M -cp ${CLASSPATH} com.jeffplaisance.protobuf.compiler.ScalaProtoWrapperGenerator
