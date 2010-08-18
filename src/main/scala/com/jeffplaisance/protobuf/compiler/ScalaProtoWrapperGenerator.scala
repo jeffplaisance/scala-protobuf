@@ -72,7 +72,13 @@ object ScalaProtoWrapperGenerator {
         val requiredFieldDecls = requiredFields.zip(requiredFieldTypes.unzip._1).map(x => x._1.getName+":"+x._2)
         val requiredFieldVars = requiredFieldDecls.map(x => "var "+x)
 
-        val optionalFields = fields.filter(field => field.isOptional)
+        val defaultFields = fields.filter(field => field.isOptional && field.hasDefaultValue)
+        val defaultFieldTypes = getFieldTypes(defaultFields, javaClass)
+        val defaultFieldDecls = defaultFields.zip(defaultFieldTypes.unzip._1).map(x => x._1.getName+":"+x._2)
+        val defaultFieldDefaults = defaultFieldDecls.zip(defaultFields).map(x => x._1+" = "+x._2.getDefaultValue)
+        val defaultFieldVars = defaultFieldDefaults.map(x => "var "+x)
+
+        val optionalFields = fields.filter(field => field.isOptional && !field.hasDefaultValue)
         val optionalFieldTypes = getFieldTypes(optionalFields, javaClass)
         val optionalFieldDecls = optionalFields.zip(optionalFieldTypes.unzip._1).map(x => x._1.getName+":Option["+x._2+"]")
         val optionalFieldDefaults = optionalFieldDecls.map(x => x+" = None")
@@ -89,11 +95,11 @@ object ScalaProtoWrapperGenerator {
         out.println
         out.print("case class "+name+"(")
         val spaces = " "*(name.length+12)
-        out.println((requiredFieldDecls++optionalFieldDefaults++repeatedFieldDefaults).mkString(",\n"+spaces))
+        out.println((requiredFieldDecls++defaultFieldDefaults++optionalFieldDefaults++repeatedFieldDefaults).mkString(",\n"+spaces))
         out.println("        ) extends TypedMessage["+name+","+javaSubClass+"] {")
         out.println("    def javaMessage:"+javaSubClass+" = {")
         out.println("        val builder = "+javaSubClass+".newBuilder")
-        for ((field, isMessage) <- requiredFields.zip(requiredFieldTypes.unzip._2)) {
+        for ((field, isMessage) <- requiredFields.zip(requiredFieldTypes.unzip._2)++defaultFields.zip(defaultFieldTypes.unzip._2)) {
             val fieldName = field.getName
             out.println("        builder.set"+upcaseFirstLetter(fieldName)+"("+fieldName+(if(isMessage)".javaMessage" else "")+")")
         }
@@ -125,9 +131,9 @@ object ScalaProtoWrapperGenerator {
         out.println("    }")
         out.println
         out.println("    def copyAndSet(i:Int, fieldValue:Any):"+name+" = {")
-        if (!requiredFields.isEmpty || !optionalFields.isEmpty) {
+        if (!requiredFields.isEmpty || !defaultFields.isEmpty || !optionalFields.isEmpty) {
             out.println("        i match {")
-            requiredFields.foreach(field => out.println("            case "+field.getNumber+" => copy("+field.getName+" = fieldValue.asInstanceOf["+getTypeString(field, javaClass)._1+"])"))
+            (requiredFields++defaultFields).foreach(field => out.println("            case "+field.getNumber+" => copy("+field.getName+" = fieldValue.asInstanceOf["+getTypeString(field, javaClass)._1+"])"))
             optionalFields.foreach(field => out.println("            case "+field.getNumber+" => copy("+field.getName+" = fieldValue.asInstanceOf[Option["+getTypeString(field, javaClass)._1+"]])"))
             out.println("        }")
         } else out.println("        this")
@@ -148,10 +154,10 @@ object ScalaProtoWrapperGenerator {
         out.println("    }")
         out.println
         out.println("    def javaToScala(message:"+javaSubClass+"):"+name+" = {")
-        val requiredGetters = new ListBuffer[String]
-        for ((field, (typeName, isMessage)) <- requiredFields.zip(requiredFieldTypes)) {
+        val requiredAndDefaultGetters = new ListBuffer[String]
+        for ((field, (typeName, isMessage)) <- requiredFields.zip(requiredFieldTypes)++defaultFields.zip(defaultFieldTypes)) {
             val fieldName = field.getName
-            requiredGetters+=((if (isMessage)typeName+".javaToScala(" else "")+"message.get"+upcaseFirstLetter(fieldName)+"()"+(if (isMessage) ")" else ""))
+            requiredAndDefaultGetters+=((if (isMessage)typeName+".javaToScala(" else "")+"message.get"+upcaseFirstLetter(fieldName)+"()"+(if (isMessage) ")" else ""))
         }
         val optionalGetters = new ListBuffer[String]
         for ((field, (typeName, isMessage)) <- optionalFields.zip(optionalFieldTypes)) {
@@ -165,18 +171,15 @@ object ScalaProtoWrapperGenerator {
             repeatedGetters+=("JavaConversions.asIterator(message.get"+upcaseFirstLetter(fieldName)+"List().iterator)"+(if (isMessage) ".map(x => "+typeName+".javaToScala(x))" else "")+".toList")
         }
         val spaces2 = " "*(name.length+13)
-        out.println("        new "+name+"("+(requiredGetters++optionalGetters++repeatedGetters).mkString(",\n"+spaces2)+"\n        )")
+        out.println("        new "+name+"("+(requiredAndDefaultGetters++optionalGetters++repeatedGetters).mkString(",\n"+spaces2)+"\n        )")
         out.println("    }")
         descriptor.getNestedTypes.iterator.foreach(x => out.print(indentString(makeClassesForDescriptor(x, javaClass))))
         out.println("}")
         out.println
 
         out.print("class "+name+"Builder(")
-        out.print(requiredFieldVars.mkString(","))
-        out.println(") extends TypedMessageBuilder["+name+", "+javaSubClass+"] {")
-        for (field <- optionalFieldVars) {
-            out.println("    "+field)
-        }
+        out.println((requiredFieldVars++defaultFieldVars++optionalFieldVars).mkString(",\n"+spaces+"  "))
+        out.println("        ) extends TypedMessageBuilder["+name+", "+javaSubClass+"] {")
         out.println
         for (field <- repeatedFieldListBuffers) {
             out.println("    "+field)
@@ -185,14 +188,14 @@ object ScalaProtoWrapperGenerator {
         out.println("    def set(i:Int, fieldValue:Any):Unit = {")
         if (!requiredFields.isEmpty || !optionalFields.isEmpty) {
             out.println("        i match {")
-            requiredFields.foreach(field => out.println("            case "+field.getNumber+" => "+field.getName+" = fieldValue.asInstanceOf["+getTypeString(field, javaClass)._1+"]"))
+            (requiredFields++defaultFields).foreach(field => out.println("            case "+field.getNumber+" => "+field.getName+" = fieldValue.asInstanceOf["+getTypeString(field, javaClass)._1+"]"))
             optionalFields.foreach(field => out.println("            case "+field.getNumber+" => "+field.getName+" = fieldValue.asInstanceOf[Option["+getTypeString(field, javaClass)._1+"]]"))
             out.println("        }")
         }
         out.println("    }")
         out.println
         out.println("    def build:"+name+" = {")
-        out.println("        new "+name+"("+(requiredFields.map(x => x.getName())++optionalFields.map(x => x.getName())++repeatedFields.map(x => x.getName()+".result")).mkString(",\n"+spaces2)+"\n        )")
+        out.println("        new "+name+"("+((requiredFields++defaultFields++optionalFields).map(x => x.getName())++repeatedFields.map(x => x.getName()+".result")).mkString(",\n"+spaces2)+"\n        )")
         out.println("    }")
         out.println("}")
         stringWriter.toString
